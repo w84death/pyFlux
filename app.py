@@ -2,7 +2,7 @@ import sys
 import os
 import time
 import requests
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog, QCheckBox
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog, QCheckBox, QInputDialog, QMessageBox
 from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
@@ -34,7 +34,18 @@ class App(QWidget):
     def __init__(self):
         super().__init__()
         self.title = 'pyFlux'
+        self.check_api_key()
         self.initUI()
+
+    def check_api_key(self):
+        api_key = os.environ.get("BFL_API_KEY")
+        if not api_key:
+            api_key, ok = QInputDialog.getText(self, 'API Key Required', 'Enter your BFL API Key:')
+            if ok and api_key:
+                os.environ["BFL_API_KEY"] = api_key
+            else:
+                QMessageBox.critical(self, 'Error', 'API Key is required to proceed.')
+                sys.exit(1)
 
     def initUI(self):
         self.setWindowTitle(self.title)
