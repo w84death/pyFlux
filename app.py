@@ -38,14 +38,24 @@ class App(QWidget):
         self.initUI()
 
     def check_api_key(self):
-        api_key = os.environ.get("BFL_API_KEY")
+        config_file = 'config.txt'
+        api_key = None
+
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as file:
+                api_key = file.read().strip()
+
         if not api_key:
             api_key, ok = QInputDialog.getText(self, 'API Key Required', 'Enter your BFL API Key:')
             if ok and api_key:
+                with open(config_file, 'w') as file:
+                    file.write(api_key)
                 os.environ["BFL_API_KEY"] = api_key
             else:
                 QMessageBox.critical(self, 'Error', 'API Key is required to proceed.')
                 sys.exit(1)
+        else:
+            os.environ["BFL_API_KEY"] = api_key
 
     def initUI(self):
         self.setWindowTitle(self.title)
