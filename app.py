@@ -1,9 +1,9 @@
-import os
+import io
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import requests
-from io import BytesIO
+import os
 
 class App(tk.Frame):
     def __init__(self, master):
@@ -27,61 +27,45 @@ class App(tk.Frame):
         self.download_button = tk.Button(input_frame, text="Download Image", command=self.download_image)
         self.download_button.pack(side=tk.LEFT, padx=5)
 
-        # Creative Generation checkbox
-        self.creative_var = tk.BooleanVar()
-        self.creative_checkbutton = tk.Checkbutton(
-            input_frame, text="Creative Generation", variable=self.creative_var
+        # Aspect Ratio dropdown
+        self.aspect_ratio_var = tk.StringVar(value="4:3")
+        self.aspect_ratio_label = tk.Label(input_frame, text="Aspect Ratio:")
+        self.aspect_ratio_label.pack(side=tk.LEFT, padx=5)
+        self.aspect_ratio_menu = ttk.OptionMenu(
+            input_frame, self.aspect_ratio_var, "4:3", "1:1", "4:3", "16:9", "21:9"
         )
-        self.creative_checkbutton.pack(side=tk.LEFT, padx=5)
+        self.aspect_ratio_menu.pack(side=tk.LEFT, padx=5)
 
-        # Canvas with scrollbars
+        # Canvas for displaying the image
         self.canvas = tk.Canvas(self.master)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # Vertical scrollbar
-        self.v_scrollbar = tk.Scrollbar(self.master, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas.configure(yscrollcommand=self.v_scrollbar.set)
-
-        # Horizontal scrollbar
-        self.h_scrollbar = tk.Scrollbar(self.master, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-        self.canvas.configure(xscrollcommand=self.h_scrollbar.set)
-
-        self.image = None  # PIL image reference
-        self.photo = None  # PhotoImage reference
-
-        # Frame inside the canvas
-        self.image_frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.image_frame, anchor='nw')
-
-        self.image_frame.bind("<Configure>", self.on_frame_configure)
-
-        # Image label
-        self.image_label = tk.Label(self.image_frame)
+        self.image_label = tk.Label(self.canvas)
         self.image_label.pack()
 
         self.image = None  # To store the PIL image
+        self.photo_image = None  # To store the PhotoImage
 
     def on_frame_configure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.canvas.configure(scrollregion=self.image_frame.bbox("all"))
 
     def generate_image(self):
         prompt = self.prompt_entry.get()
         if not prompt:
             return
 
+        aspect_ratio = self.aspect_ratio_var.get()
+
         # Build the payload
         payload = {
             'prompt': prompt,
-            'width': 1440,
-            'height': 1080,
+            'aspect_ratio': aspect_ratio,
+            'output_format': 'png',
+            'width': '2368',
+            'height': '1792',
         }
-        if self.creative_var.get():
-            payload['prompt_upsampling'] = True
-
         response = requests.post(
-            'https://api.bfl.ml/v1/flux-pro-1.1',
+            'https://api.bfl.ml/v1/flux-pro-1.1-ultra',
             headers={
                 'accept': 'application/json',
                 'x-key': os.environ.get("BFL_API_KEY"),
@@ -114,24 +98,18 @@ class App(tk.Frame):
 
     def display_image(self, image_url):
         response = requests.get(image_url)
-        if response.status_code == 200:
-            image_data = response.content
-            self.image = Image.open(BytesIO(image_data))
+        image_data = response.content
+        image = Image.open(io.BytesIO(image_data))
 
-            # Convert the PIL image to a PhotoImage
-            self.photo = ImageTk.PhotoImage(self.image)
+        # Resize the image to fit the window while maintaining aspect ratio
+        window_width = self.master.winfo_width()
+        window_height = self.master.winfo_height()
+        image.thumbnail((window_width, window_height), Image.LANCZOS)
 
-            # Clear the canvas
-            self.canvas.delete("all")
-
-            # Display the image on the canvas
-            self.canvas.create_image(0, 0, anchor='nw', image=self.photo)
-
-            # Update the scroll region
-            self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        else:
-            print(f"HTTP Error: {response.status_code}")
-            print(f"Response Content: {response.text}")
+        self.image = image  # Store the original PIL image
+        self.photo_image = ImageTk.PhotoImage(image)
+        self.image_label.config(image=self.photo_image)
+        self.image_label.image = self.photo_image
 
     def download_image(self):
         if self.image:
@@ -146,5 +124,6 @@ class App(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = App(root)
+    app = App(master=root)
+    app.pack(fill=tk.BOTH, expand=True)
     root.mainloop()
