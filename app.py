@@ -1,60 +1,82 @@
-import io
-import tkinter as tk
-from tkinter import ttk, filedialog
-from PIL import Image, ImageTk
-import requests
+import sys
 import os
+import time
+import requests
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog
+from PyQt5.QtGui import QPixmap, QMovie
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
-class App(tk.Frame):
-    def __init__(self, master):
+class ImageFetcher(QThread):
+    image_ready = pyqtSignal(str)
+
+    def __init__(self, request_id):
         super().__init__()
-        self.master = master
-        self.master.title("PyFlux")
+        self.request_id = request_id
 
-        # Input frame
-        input_frame = tk.Frame(self.master)
-        input_frame.pack(pady=10)
+    def run(self):
+        while True:
+            time.sleep(0.5)
+            result = requests.get(
+                'https://api.bfl.ml/v1/get_result',
+                headers={
+                    'accept': 'application/json',
+                    'x-key': os.environ.get("BFL_API_KEY"),
+                },
+                params={
+                    'id': self.request_id,
+                },
+            ).json()
+            if result["status"] == "Ready":
+                self.image_ready.emit(result['result']['sample'])
+                break
 
-        self.prompt_label = tk.Label(input_frame, text="Enter prompt:")
-        self.prompt_label.pack(side=tk.LEFT)
+class App(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.title = 'pyFlux'
+        self.initUI()
 
-        self.prompt_entry = tk.Entry(input_frame, width=50)
-        self.prompt_entry.pack(side=tk.LEFT, padx=5)
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(100, 100, 800, 600)
 
-        self.generate_button = tk.Button(input_frame, text="Generate", command=self.generate_image)
-        self.generate_button.pack(side=tk.LEFT, padx=5)
+        layout = QVBoxLayout()
 
-        self.download_button = tk.Button(input_frame, text="Download Image", command=self.download_image)
-        self.download_button.pack(side=tk.LEFT, padx=5)
+        top_row = QHBoxLayout()
 
-        # Aspect Ratio dropdown
-        self.aspect_ratio_var = tk.StringVar(value="4:3")
-        self.aspect_ratio_label = tk.Label(input_frame, text="Aspect Ratio:")
-        self.aspect_ratio_label.pack(side=tk.LEFT, padx=5)
-        self.aspect_ratio_menu = ttk.OptionMenu(
-            input_frame, self.aspect_ratio_var, "4:3", "1:1", "4:3", "16:9", "21:9"
-        )
-        self.aspect_ratio_menu.pack(side=tk.LEFT, padx=5)
+        self.prompt_label = QLabel('Prompt:', self)
+        top_row.addWidget(self.prompt_label)
 
-        # Canvas for displaying the image
-        self.canvas = tk.Canvas(self.master)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.prompt_input = QLineEdit(self)
+        top_row.addWidget(self.prompt_input)
 
-        self.image_label = tk.Label(self.canvas)
-        self.image_label.pack()
+        self.aspect_ratio_label = QLabel('Aspect Ratio:', self)
+        top_row.addWidget(self.aspect_ratio_label)
 
-        self.image = None  # To store the PIL image
-        self.photo_image = None  # To store the PhotoImage
+        self.aspect_ratio_var = QComboBox(self)
+        self.aspect_ratio_var.addItems(['16:9', '4:3', '1:1', '21:9', '3:4'])
+        top_row.addWidget(self.aspect_ratio_var)
 
-    def on_frame_configure(self, event):
-        self.canvas.configure(scrollregion=self.image_frame.bbox("all"))
+        self.submit_button = QPushButton('Submit', self)
+        self.submit_button.clicked.connect(self.on_submit)
+        top_row.addWidget(self.submit_button)
 
-    def generate_image(self):
-        prompt = self.prompt_entry.get()
-        if not prompt:
-            return
+        layout.addLayout(top_row)
 
-        aspect_ratio = self.aspect_ratio_var.get()
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.image_label)
+
+        self.save_button = QPushButton('Save Image', self)
+        self.save_button.clicked.connect(self.save_image)
+        self.save_button.setEnabled(False)
+        layout.addWidget(self.save_button)
+
+        self.setLayout(layout)
+
+    def on_submit(self):
+        prompt = self.prompt_input.text()
+        aspect_ratio = self.aspect_ratio_var.currentText()
 
         # Build the payload
         payload = {
@@ -68,62 +90,46 @@ class App(tk.Frame):
             'https://api.bfl.ml/v1/flux-pro-1.1-ultra',
             headers={
                 'accept': 'application/json',
-                'x-key': os.environ.get("BFL_API_KEY"),
                 'Content-Type': 'application/json',
+                'x-key': os.environ.get("BFL_API_KEY"),
             },
-            json=payload,
-        ).json()
+            json=payload
+        )
+        response_data = response.json()
+        request_id = response_data['id']
 
-        request_id = response['id']
+        # Show loading icon
+        self.loading_movie = QMovie("loading.gif")
+        self.image_label.setMovie(self.loading_movie)
+        self.loading_movie.start()
 
-        # Polling for the result
-        while True:
-            result = requests.get(
-                'https://api.bfl.ml/v1/get_result',
-                headers={
-                    'accept': 'application/json',
-                    'x-key': os.environ.get("BFL_API_KEY"),
-                },
-                params={
-                    'id': request_id,
-                },
-            ).json()
-            if result["status"] == "Ready":
-                image_url = result['result']['sample']
-                self.display_image(image_url)
-                break
-            else:
-                self.master.update()
-                self.master.after(1000)
+        self.image_fetcher = ImageFetcher(request_id)
+        self.image_fetcher.image_ready.connect(self.display_image)
+        self.image_fetcher.start()
 
     def display_image(self, image_url):
-        response = requests.get(image_url)
-        image_data = response.content
-        image = Image.open(io.BytesIO(image_data))
+        self.image_url = image_url
+        pixmap = QPixmap()
+        pixmap.loadFromData(requests.get(image_url).content)
+        self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.save_button.setEnabled(True)
 
-        # Resize the image to fit the window while maintaining aspect ratio
-        window_width = self.master.winfo_width()
-        window_height = self.master.winfo_height()
-        image.thumbnail((window_width, window_height), Image.LANCZOS)
+    def resizeEvent(self, event):
+        if hasattr(self, 'image_url'):
+            pixmap = QPixmap()
+            pixmap.loadFromData(requests.get(self.image_url).content)
+            self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        super().resizeEvent(event)
 
-        self.image = image  # Store the original PIL image
-        self.photo_image = ImageTk.PhotoImage(image)
-        self.image_label.config(image=self.photo_image)
-        self.image_label.image = self.photo_image
+    def save_image(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;All Files (*)", options=options)
+        if file_path:
+            with open(file_path, 'wb') as file:
+                file.write(requests.get(self.image_url).content)
 
-    def download_image(self):
-        if self.image:
-            save_path = filedialog.asksaveasfilename(
-                defaultextension=".png",
-                filetypes=[("PNG files", "*.png"), ("All files", "*.*")],
-            )
-            if save_path:
-                self.image.save(save_path)
-        else:
-            print("No image to save.")
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = App(master=root)
-    app.pack(fill=tk.BOTH, expand=True)
-    root.mainloop()
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = App()
+    ex.show()
+    sys.exit(app.exec_())
