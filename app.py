@@ -2,7 +2,7 @@ import sys
 import os
 import time
 import requests
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog, QCheckBox
 from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
@@ -57,6 +57,9 @@ class App(QWidget):
         self.aspect_ratio_var.addItems(['16:9', '4:3', '1:1', '21:9', '3:4'])
         top_row.addWidget(self.aspect_ratio_var)
 
+        self.raw_checkbox = QCheckBox('RAW', self)
+        top_row.addWidget(self.raw_checkbox)
+
         self.submit_button = QPushButton('Submit', self)
         self.submit_button.clicked.connect(self.on_submit)
         top_row.addWidget(self.submit_button)
@@ -77,14 +80,14 @@ class App(QWidget):
     def on_submit(self):
         prompt = self.prompt_input.text()
         aspect_ratio = self.aspect_ratio_var.currentText()
+        raw_mode = self.raw_checkbox.isChecked()
 
         # Build the payload
         payload = {
             'prompt': prompt,
             'aspect_ratio': aspect_ratio,
             'output_format': 'png',
-            'width': '2368',
-            'height': '1792',
+            'raw': raw_mode
         }
         response = requests.post(
             'https://api.bfl.ml/v1/flux-pro-1.1-ultra',
