@@ -75,6 +75,7 @@ class App(QWidget):
 
         self.prompt_input = QLineEdit(self)
         self.prompt_input.setStyleSheet("background-color: #444; color: #fff;")
+        self.prompt_input.returnPressed.connect(self.on_submit)
         top_row.addWidget(self.prompt_input)
 
         self.aspect_ratio_var = QComboBox(self)
