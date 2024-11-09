@@ -34,7 +34,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 3. Install the required packages:
-pip install -r requirements.txt
+pip install requests pyqt5 
 
 ## Usage
 
