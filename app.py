@@ -2,6 +2,7 @@ import sys
 import os
 import time
 import requests
+import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QVBoxLayout, QFileDialog, QCheckBox, QInputDialog, QMessageBox
 from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -38,7 +39,7 @@ class App(QWidget):
         self.initUI()
 
     def check_api_key(self):
-        config_file = 'config.txt'
+        config_file = 'api-key.txt'
         api_key = None
 
         if os.path.exists(config_file):
@@ -103,6 +104,10 @@ class App(QWidget):
         aspect_ratio = self.aspect_ratio_var.currentText()
         raw_mode = self.raw_checkbox.isChecked()
 
+        # Save the last prompt
+        with open('last-prompt.txt', 'w') as file:
+            file.write(prompt)
+
         # Build the payload
         payload = {
             'prompt': prompt,
@@ -138,6 +143,9 @@ class App(QWidget):
         self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.save_button.setEnabled(True)
 
+        # Automatically save the image
+        self.save_image()
+
     def resizeEvent(self, event):
         if hasattr(self, 'image_url'):
             pixmap = QPixmap()
@@ -146,11 +154,24 @@ class App(QWidget):
         super().resizeEvent(event)
 
     def save_image(self):
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;All Files (*)", options=options)
-        if file_path:
-            with open(file_path, 'wb') as file:
-                file.write(requests.get(self.image_url).content)
+        # Ensure the outputs directory exists
+        output_dir = 'outputs'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Create a dated subdirectory
+        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+        dated_dir = os.path.join(output_dir, date_str)
+        if not os.path.exists(dated_dir):
+            os.makedirs(dated_dir)
+
+        # Create a timestamped file name
+        time_str = datetime.datetime.now().strftime('%H-%M-%S')
+        file_path = os.path.join(dated_dir, f"image_{time_str}.png")
+
+        # Save the image
+        with open(file_path, 'wb') as file:
+            file.write(requests.get(self.image_url).content)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
