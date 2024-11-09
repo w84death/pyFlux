@@ -37,6 +37,9 @@ class App(QWidget):
         self.title = 'pyFlux'
         self.check_api_key()
         self.initUI()
+        self.setStyleSheet("background-color: #777;")
+        self.prompt_input.setText(open('last-prompt.txt').read())
+
 
     def check_api_key(self):
         config_file = 'api-key.txt'
@@ -67,13 +70,12 @@ class App(QWidget):
         top_row = QHBoxLayout()
 
         self.prompt_label = QLabel('Prompt:', self)
+        self.prompt_label.setStyleSheet("color: #ccc;")
         top_row.addWidget(self.prompt_label)
 
         self.prompt_input = QLineEdit(self)
+        self.prompt_input.setStyleSheet("background-color: #444; color: #fff;")
         top_row.addWidget(self.prompt_input)
-
-        self.aspect_ratio_label = QLabel('Aspect Ratio:', self)
-        top_row.addWidget(self.aspect_ratio_label)
 
         self.aspect_ratio_var = QComboBox(self)
         self.aspect_ratio_var.addItems(['16:9', '4:3', '1:1', '21:9', '3:4'])
@@ -84,6 +86,7 @@ class App(QWidget):
 
         self.submit_button = QPushButton('⚙️ Generate', self)
         self.submit_button.clicked.connect(self.on_submit)
+        self.submit_button.setStyleSheet("background-color: #4c4; color: #040;")
         top_row.addWidget(self.submit_button)
 
         layout.addLayout(top_row)
@@ -92,10 +95,18 @@ class App(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.image_label)
 
+        bottom_row = QHBoxLayout()
+
+        self.about_label = QLabel('Copyright 2024 Krzysztof Krystian Jankowski', self)
+        self.about_label.setStyleSheet("color: #aaa;")
+        bottom_row.addWidget(self.about_label)
+
         self.save_button = QPushButton('Save Image', self)
         self.save_button.clicked.connect(self.save_image)
         self.save_button.setEnabled(False)
-        layout.addWidget(self.save_button)
+        bottom_row.addWidget(self.save_button)
+
+        layout.addLayout(bottom_row)
 
         self.setLayout(layout)
 
