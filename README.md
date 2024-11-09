@@ -1,6 +1,6 @@
 # pyFlux
 
-pyFlux is a PyQt5-based application that allows users to generate images using the BFL API. The application provides a graphical user interface to input prompts, select aspect ratios, and save the generated images.
+pyFlux is a PyQt5-based application that allows users to generate images using the [FLUX.1-pro 1.1 Ultra](https://blackforestlabs.io/flux1-1-ultra-and-raw/) from [BlackForestLab](https://blackforestlabs.io/). The application provides a graphical user interface to input prompts, select aspect ratios, and save the generated images.
 
 ![pyFlux Screenshot](pyFlux.png)
 
