@@ -98,8 +98,8 @@ class App(QWidget):
 
         bottom_row = QHBoxLayout()
 
-        self.about_label = QLabel('Copyright 2024 Krzysztof Krystian Jankowski', self)
-        self.about_label.setStyleSheet("color: #aaa;")
+        self.about_label = QLabel('Copyright 2024 Krzysztof Krystian Jankowski, FLUX.1 Pro by BlackForestLabs', self)
+        self.about_label.setStyleSheet("color: #222;")
         bottom_row.addWidget(self.about_label)
 
         self.save_button = QPushButton('Save Image', self)
