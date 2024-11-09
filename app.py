@@ -82,7 +82,7 @@ class App(QWidget):
         self.raw_checkbox = QCheckBox('RAW', self)
         top_row.addWidget(self.raw_checkbox)
 
-        self.submit_button = QPushButton('Submit', self)
+        self.submit_button = QPushButton('⚙️ Generate', self)
         self.submit_button.clicked.connect(self.on_submit)
         top_row.addWidget(self.submit_button)
 
