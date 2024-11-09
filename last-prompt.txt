@@ -1,1 +1,1 @@
-movie title "pyFlux", space and stars in the background, sun visible in the top center
+movie title "pyFlux", subtitle "Made by Krzysztof Krystian Jankowski",  space and stars, blue nebula, galaxies in the background, sun visible in the top center
