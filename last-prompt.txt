@@ -1,1 +1,1 @@
-movie title "pyFlux", subtitle "Made by Krzysztof Krystian Jankowski",  space and stars, blue nebula, galaxies in the background, sun visible in the top center
+a logo "pyFlux" and "by Krzysztof" painted on a wall, graffiti, old abandoned factory
